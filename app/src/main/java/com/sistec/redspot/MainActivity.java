@@ -6,13 +6,13 @@ import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,18 +32,27 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int MY_PERMISSIONS_REQUEST_LOCATION = 101;
     private static final int MAP_UPDATE_TIME = 10000; //10sec
-    private static final long MAP_UPDATE_DISTANCE = 50; //
+    private static final long MAP_UPDATE_DISTANCE = 50; //50 meters
     private boolean IS_LOCATION_PERMISSION_ENABLED = false;
 
-    TextView tvPlaceDetails, tvDengerCount;
+    TextView tvDengerCount;
+    //TextView tvPlaceDetails;
+
 
     GoogleMap mGoogleMap;
     GoogleApiClient mGoogleApiClient;
@@ -52,6 +61,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     LocationCallback locationCallback;
     Marker marker;
     MarkerOptions markerOptions;
+    Location userCurrentLocation = null;
+
+    FirebaseDatabase database;
+    DatabaseReference addressRef;
+    Query fetchAddQuery;
+
+    ArrayList<AddressStructure> addressStructuresArrayList = new ArrayList<AddressStructure>();
+    AddressStructureAdapter adapter;
+    ListView listView;
 
 
     @Override
@@ -59,9 +77,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         if (googleServicesAvailable()) {
             setContentView(R.layout.activity_main);
-            tvPlaceDetails = findViewById(R.id.place_details);
+            //tvPlaceDetails = findViewById(R.id.place_details);
             tvDengerCount = findViewById(R.id.denger_count);
             mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+            database = FirebaseDatabase.getInstance();
+            addressRef = database.getReference();
+            adapter = new AddressStructureAdapter(this, addressStructuresArrayList);
+            listView.setAdapter(adapter);
             checkLocationPermission();
             if (!IS_LOCATION_PERMISSION_ENABLED){
                 getLocationPermission();
@@ -73,8 +95,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Toast.makeText(MainActivity.this, "Cant get location", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    Location location = locationResult.getLastLocation();
-                    LatLng ll = new LatLng(location.getLatitude(), location.getLongitude());
+                    userCurrentLocation = locationResult.getLastLocation();
+                    LatLng ll = new LatLng(userCurrentLocation.getLatitude(), userCurrentLocation.getLongitude());
                     Geocoder gc = new Geocoder(MainActivity.this);
                     try {
                         List<Address> list = gc.getFromLocation(ll.latitude, ll.longitude,1);
@@ -82,8 +104,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-
-
                     CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll, 15.0f);
                     mGoogleMap.animateCamera(update);
                 };
@@ -91,12 +111,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             initMap();
         } else {
             // No Google Maps Layout
+            setContentView(R.layout.activity_main_error);
         }
     }
 
     private void setMarker(Address address, LatLng ll){
-        if (address.getSubLocality()==null)
+        if (address.getSubLocality()==null) {
             address.setSubLocality(address.getLocality());
+        }
         markerOptions = new MarkerOptions()
                 .title(address.getSubLocality())
                 .draggable(true)
@@ -105,28 +127,48 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (marker != null){
             marker.remove();
         }
-        StringBuilder sb = new StringBuilder();
+        fetchAddQuery = addressRef.orderByChild("sub_locality").startAt(address.getSubLocality());
+        fetchAddQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()){
+                    for (DataSnapshot result : dataSnapshot.getChildren()){
+                        AddressStructure tempHolder = result.getValue(AddressStructure.class);
+                        tempHolder.setCurr_lat_lng(userCurrentLocation);
+                        addressStructuresArrayList.add(tempHolder);
+                        adapter.notifyDataSetChanged();
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+        /*StringBuilder sb = new StringBuilder();
         for (int i = 0; i < address.getMaxAddressLineIndex(); i++) {
             sb.append(address.getAddressLine(i)).append("\n");
         }
         sb.append(address.getLocality()).append("\n");
         sb.append(address.getPostalCode()).append("\n");
         sb.append(address.getCountryName());
-        tvPlaceDetails.setText(sb.toString());
+        tvPlaceDetails.setText(sb.toString());*/
         marker = mGoogleMap.addMarker(markerOptions);
     }
     private void updateMarker(Address address){
         if (address.getSubLocality()==null)
             address.setSubLocality(address.getLocality());
 
-        StringBuilder sb = new StringBuilder();
+        /*StringBuilder sb = new StringBuilder();
         for (int i = 0; i < address.getMaxAddressLineIndex(); i++) {
             sb.append(address.getAddressLine(i)).append("\n");
         }
         sb.append(address.getLocality()).append("\n");
         sb.append(address.getPostalCode()).append("\n");
         sb.append(address.getCountryName());
-        tvPlaceDetails.setText(sb.toString());
+        tvPlaceDetails.setText(sb.toString());*/
+        marker.setSnippet("You are not here");
         marker.setTitle(address.getSubLocality());
         marker.showInfoWindow();
     }
@@ -190,15 +232,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 @Override
                 public View getInfoContents(Marker marker) {
                     View v = getLayoutInflater().inflate(R.layout.marker_discription, null);
+
                     TextView tvLocality = v.findViewById(R.id.tv_locality);
                     TextView tvLatitude = v.findViewById(R.id.tv_lat);
                     TextView tvLongitude = v.findViewById(R.id.tv_lng);
                     TextView tvSnippet = v.findViewById(R.id.tv_snippet);
+
                     LatLng ll = marker.getPosition();
+
                     tvLocality.setText(marker.getTitle());
                     tvLatitude.setText("Latitude: " + ll.latitude);
                     tvLongitude.setText("Longitude: " + ll.longitude);
                     tvSnippet.setText(marker.getSnippet());
+
                     return v;
                 }
             });

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Latitude: "/>
+        <TextView
+            android:id="@+id/tv_danger_lat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Value"/>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Longitude: "/>
+        <TextView
+            android:id="@+id/tv_danger_lng"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Value"/>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Locality: "/>
+        <TextView
+            android:id="@+id/tv_danger_locality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Value"/>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Distance from Your Location: "/>
+        <TextView
+            android:id="@+id/tv_dist_frm_you"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Value"/>
+    </LinearLayout>
+</LinearLayout>
