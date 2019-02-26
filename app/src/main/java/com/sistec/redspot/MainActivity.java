@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.ListView;
@@ -29,6 +30,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -48,6 +51,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int MY_PERMISSIONS_REQUEST_LOCATION = 101;
     private static final int MAP_UPDATE_TIME = 10000; //10sec
     private static final long MAP_UPDATE_DISTANCE = 50; //50 meters
+    private static final float ZOOM_LEVEL = 14.0f;
+    private static final float MAX_ZONE_TO_COVER = 1500; //1500 meters
     private boolean IS_LOCATION_PERMISSION_ENABLED = false;
 
     TextView tvDengerCount;
@@ -60,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     FusedLocationProviderClient mFusedLocationProviderClient;
     LocationCallback locationCallback;
     Marker marker;
+    Circle circle;
     MarkerOptions markerOptions;
     Location userCurrentLocation = null;
 
@@ -83,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             database = FirebaseDatabase.getInstance();
             addressRef = database.getReference();
             adapter = new AddressStructureAdapter(this, addressStructuresArrayList);
+            listView = findViewById(R.id.place_details);
             listView.setAdapter(adapter);
             checkLocationPermission();
             if (!IS_LOCATION_PERMISSION_ENABLED){
@@ -104,7 +111,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll, 15.0f);
+
+                    CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll, ZOOM_LEVEL);
                     mGoogleMap.animateCamera(update);
                 };
             };
@@ -113,6 +121,72 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             // No Google Maps Layout
             setContentView(R.layout.activity_main_error);
         }
+    }
+
+    private void fetchDangerAddress(Address address){
+        fetchAddQuery = addressRef.orderByChild("sub_locality").startAt(address.getSubLocality().toLowerCase());
+        fetchAddQuery.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()){
+                    int dgCount = 0;
+                    addressStructuresArrayList.clear();
+                    for (DataSnapshot result : dataSnapshot.getChildren()){
+                        AddressStructure tempHolder = result.getValue(AddressStructure.class);
+                        if (tempHolder != null) {
+                            tempHolder.setCurrLocation(userCurrentLocation);
+                            Location loc = new Location("");
+                            loc.setLatitude(tempHolder.getLatitude());
+                            loc.setLongitude(tempHolder.getLongitude());
+                            float dist = loc.distanceTo(tempHolder.getCurrLocation());
+                            if (dist < MAX_ZONE_TO_COVER) {
+                                addressStructuresArrayList.add(tempHolder);
+                                adapter.notifyDataSetChanged();
+                                dgCount++;
+                            }
+                        }
+
+                    }
+                    tvDengerCount.setText("" + dgCount);
+                    if (dgCount == 0 ){
+                        tvDengerCount.setTextColor(ContextCompat.getColor(getApplicationContext(),R.color.safe_dark));
+                        setSafeCircle();
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void setCircle(){
+        CircleOptions circleOptions = new CircleOptions()
+                .center(new LatLng(userCurrentLocation.getLatitude(), userCurrentLocation.getLongitude()))
+                .radius(MAX_ZONE_TO_COVER)
+                .strokeWidth(10)
+                .strokeColor(ContextCompat.getColor(this,R.color.danger_highest))
+                .fillColor(ContextCompat.getColor(this, R.color.danger_four));
+
+// Get back the mutable Polyline
+        if (circle != null)
+            circle.remove();
+        circle = mGoogleMap.addCircle(circleOptions);
+    }
+    private void setSafeCircle(){
+        CircleOptions circleOptions = new CircleOptions()
+                .center(new LatLng(userCurrentLocation.getLatitude(), userCurrentLocation.getLongitude()))
+                .radius(MAX_ZONE_TO_COVER)
+                .strokeWidth(10)
+                .strokeColor(ContextCompat.getColor(this,R.color.safe_dark))
+                .fillColor(ContextCompat.getColor(this, R.color.safe_one));
+
+// Get back the mutable Polyline
+        if (circle != null)
+            circle.remove();
+        circle = mGoogleMap.addCircle(circleOptions);
     }
 
     private void setMarker(Address address, LatLng ll){
@@ -127,51 +201,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (marker != null){
             marker.remove();
         }
-        fetchAddQuery = addressRef.orderByChild("sub_locality").startAt(address.getSubLocality());
-        fetchAddQuery.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()){
-                    for (DataSnapshot result : dataSnapshot.getChildren()){
-                        AddressStructure tempHolder = result.getValue(AddressStructure.class);
-                        tempHolder.setCurr_lat_lng(userCurrentLocation);
-                        addressStructuresArrayList.add(tempHolder);
-                        adapter.notifyDataSetChanged();
-                    }
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-            }
-        });
-        /*StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < address.getMaxAddressLineIndex(); i++) {
-            sb.append(address.getAddressLine(i)).append("\n");
-        }
-        sb.append(address.getLocality()).append("\n");
-        sb.append(address.getPostalCode()).append("\n");
-        sb.append(address.getCountryName());
-        tvPlaceDetails.setText(sb.toString());*/
+        fetchDangerAddress(address);
         marker = mGoogleMap.addMarker(markerOptions);
+        setCircle();
     }
+
     private void updateMarker(Address address){
         if (address.getSubLocality()==null)
             address.setSubLocality(address.getLocality());
-
-        /*StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < address.getMaxAddressLineIndex(); i++) {
-            sb.append(address.getAddressLine(i)).append("\n");
-        }
-        sb.append(address.getLocality()).append("\n");
-        sb.append(address.getPostalCode()).append("\n");
-        sb.append(address.getCountryName());
-        tvPlaceDetails.setText(sb.toString());*/
+        userCurrentLocation.setLatitude(address.getLatitude());
+        userCurrentLocation.setLongitude(address.getLongitude());
         marker.setSnippet("You are not here");
         marker.setTitle(address.getSubLocality());
+        fetchDangerAddress(address);
+        setCircle();
         marker.showInfoWindow();
     }
+
     public boolean googleServicesAvailable() {
         GoogleApiAvailability api = GoogleApiAvailability.getInstance();
         int isAvailable = api.isGooglePlayServicesAvailable(this);
@@ -246,6 +292,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     tvSnippet.setText(marker.getSnippet());
 
                     return v;
+                }
+            });
+
+            mGoogleMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+                @Override
+                public void onMapLongClick(LatLng ll) {
+                    Geocoder gc = new Geocoder(MainActivity.this);
+                    try {
+                        List<Address> list = gc.getFromLocation(ll.latitude, ll.longitude,1);
+                        userCurrentLocation.setLatitude(ll.latitude);
+                        userCurrentLocation.setLongitude(ll.longitude);
+                        setMarker(list.get(0), new LatLng(ll.latitude,ll.longitude));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll, ZOOM_LEVEL);
+                    mGoogleMap.animateCamera(update);
                 }
             });
         }

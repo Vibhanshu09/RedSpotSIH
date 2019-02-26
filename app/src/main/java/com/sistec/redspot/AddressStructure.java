@@ -35,7 +35,7 @@ public class AddressStructure {
         this.sub_locality = sub_locality;
         this.vehicle_type = vehicle_type;
     }
-    public void setCurr_lat_lng(Location ll){currLocation = ll;}
+    public void setCurrLocation(Location ll){currLocation = ll;}
     public Location getCurrLocation(){return currLocation;}
     public int getTime_interval(){return time_interval;}
     public int getDay_of_week(){return day_of_week;}
