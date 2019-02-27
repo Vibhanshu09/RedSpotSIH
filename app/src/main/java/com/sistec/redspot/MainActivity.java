@@ -2,6 +2,7 @@ package com.sistec.redspot;
 
 import android.Manifest;
 import android.app.Dialog;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -12,6 +13,8 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -35,6 +38,7 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -68,7 +72,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     Circle circle;
     MarkerOptions markerOptions;
     Location userCurrentLocation = null;
+    boolean isTrackingStarted = false;
 
+    FirebaseAuth mAuth;
     FirebaseDatabase database;
     DatabaseReference addressRef;
     Query fetchAddQuery;
@@ -86,8 +92,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             //tvPlaceDetails = findViewById(R.id.place_details);
             tvDengerCount = findViewById(R.id.denger_count);
             mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+            mAuth = FirebaseAuth.getInstance();
             database = FirebaseDatabase.getInstance();
-            addressRef = database.getReference();
+            addressRef = database.getReference().child("locations");
             adapter = new AddressStructureAdapter(this, addressStructuresArrayList);
             listView = findViewById(R.id.place_details);
             listView.setAdapter(adapter);
@@ -123,7 +130,42 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private void fetchDangerAddress(Address address){
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.options_menu, menu);
+        return true;
+    }
+
+    /*@Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem item = menu.findItem(R.id.start_tracking);
+        if (isTrackingStarted){
+            item.setTitle(getResources().getString(R.string.stop_tracking));
+            item.setIcon(getDrawable(R.drawable.ic_stop_tracking_24dp));
+        } else {
+            item.setTitle(getResources().getString(R.string.start_tracking));
+            item.setIcon(getDrawable(R.drawable.ic_start_tracking_24dp));
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }*/
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        switch (id){
+            case R.id.logout : mAuth.signOut();
+                NotificationHelper.hideOldNotification(this);
+                startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                MainActivity.this.finish();
+                break;
+            case R.id.about_us :
+                startActivity(new Intent(MainActivity.this, AboutActivity.class));
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void fetchDangerAddress(final Address address){
         fetchAddQuery = addressRef.orderByChild("sub_locality").startAt(address.getSubLocality().toLowerCase());
         fetchAddQuery.addValueEventListener(new ValueEventListener() {
             @Override
@@ -149,8 +191,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                     tvDengerCount.setText("" + dgCount);
                     if (dgCount == 0 ){
-                        tvDengerCount.setTextColor(ContextCompat.getColor(getApplicationContext(),R.color.safe_dark));
+                        addressStructuresArrayList.clear();
+                        adapter.notifyDataSetChanged();
+                        tvDengerCount.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.safe_dark));
                         setSafeCircle();
+                        NotificationHelper.hideOldNotification(MainActivity.this);
+                    }
+                    else {
+                        NotificationHelper.showNewNotification(MainActivity.this,
+                                "Your Location: " + address.getSubLocality(),
+                                "You are in accident prone area.",
+                                "Accident Counts : " + dgCount
+                        );
+                        tvDengerCount.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.danger_highest));
+                        setDangerCircle();
                     }
                 }
             }
@@ -162,7 +216,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void setCircle(){
+    private void setDangerCircle(){
         CircleOptions circleOptions = new CircleOptions()
                 .center(new LatLng(userCurrentLocation.getLatitude(), userCurrentLocation.getLongitude()))
                 .radius(MAX_ZONE_TO_COVER)
@@ -170,7 +224,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .strokeColor(ContextCompat.getColor(this,R.color.danger_highest))
                 .fillColor(ContextCompat.getColor(this, R.color.danger_four));
 
-// Get back the mutable Polyline
+        // Get back the mutable Polyline
         if (circle != null)
             circle.remove();
         circle = mGoogleMap.addCircle(circleOptions);
@@ -203,7 +257,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         fetchDangerAddress(address);
         marker = mGoogleMap.addMarker(markerOptions);
-        setCircle();
     }
 
     private void updateMarker(Address address){
@@ -214,7 +267,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         marker.setSnippet("You are not here");
         marker.setTitle(address.getSubLocality());
         fetchDangerAddress(address);
-        setCircle();
         marker.showInfoWindow();
     }
 
