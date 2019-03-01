@@ -7,8 +7,12 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.speech.tts.TextToSpeech;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
+import android.widget.Toast;
+
+import java.util.Locale;
 
 public class NotificationHelper {
 
@@ -18,6 +22,24 @@ public class NotificationHelper {
     private static final int MY_NOTIFICATION_ID = 111;
     private static NotificationManagerCompat notificationManagerCompat;
     private static NotificationCompat.Builder mBuilder;
+    private static TextToSpeech textToSpeech;
+
+    public static void startSpeechWarning(final Context context, final String warningData){
+        textToSpeech = new TextToSpeech(context, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    textToSpeech.setLanguage(Locale.US);
+                    Toast.makeText(context, "Initialization success.", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(context, "TTS Initialization failed!", Toast.LENGTH_SHORT).show();
+                }
+                textToSpeech.speak(warningData, TextToSpeech.QUEUE_FLUSH, null);
+            }
+        });
+    }
+
+
 
     public static void showNewNotification(Context context, String title, String desc, String extraDesc){
         NotificationManagerCompat notificationManagerCompat;
@@ -33,8 +55,8 @@ public class NotificationHelper {
         mBuilder.setContentText(desc);
         mBuilder.setStyle(new NotificationCompat.BigTextStyle()
                 .bigText(extraDesc + "\nClick this notification to know all danger area information."));
-        mBuilder.setPriority(Notification.PRIORITY_MAX);
-
+        mBuilder.setPriority(Notification.PRIORITY_LOW);
+        mBuilder.setSound(null);
         notificationManagerCompat = NotificationManagerCompat.from(context);
 
         // Create the NotificationChannel, but only on API 26+ because
@@ -49,11 +71,18 @@ public class NotificationHelper {
             NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
+
         notificationManagerCompat.notify(MY_NOTIFICATION_ID, mBuilder.build());
+        startSpeechWarning(context, "Warning. You are in accidental prone area. Please drive safe." );
+
     }
     public static void hideOldNotification(Context context){
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.cancelAll();
+        if (textToSpeech != null){
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
     }
 
 }

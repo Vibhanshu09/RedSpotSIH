@@ -102,7 +102,7 @@ public class RegisterActivity extends AppCompatActivity {
         var.put("email", strEmail.toLowerCase());
         var.put("name", strName.toLowerCase());
         var.put("mobile",strMobileNumber);
-        var.put("verified", true);
+        var.put("user_type", "user");
         prof.updateChildren(var);
         prof.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override

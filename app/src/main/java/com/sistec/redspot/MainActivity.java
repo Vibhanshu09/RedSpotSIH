@@ -158,6 +158,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 startActivity(new Intent(MainActivity.this, LoginActivity.class));
                 MainActivity.this.finish();
                 break;
+            case R.id.location_service : if (item.getTitle().equals(getResources().getString(R.string.start_tracking))){
+                item.getTitle().equals(getResources().getString(R.string.start_tracking));
+                //TODO: Call service
+            }
+                break;
             case R.id.about_us :
                 startActivity(new Intent(MainActivity.this, AboutActivity.class));
                 break;
@@ -206,12 +211,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         tvDengerCount.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.danger_highest));
                         setDangerCircle();
                     }
+                } else {
+                    Toast.makeText(MainActivity.this, "oooooo", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
-
+                Toast.makeText(MainActivity.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
