@@ -9,6 +9,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
@@ -24,25 +25,28 @@ public class MyMapServices extends Service implements LocationListener {
     Location location;
     private Handler mHandler = new Handler();
     private Timer mTimer = null;
+    private TimerTask timerTask;
     long notify_interval = 1000;
-    public static String str_receiver = "servicetutorial.service.receiver";
+    public static String str_receiver = "redspot.service.receiver";
     Intent intent;
 
     public MyMapServices() {
     }
 
+    @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         // TODO: Return the communication channel to the service.
-        throw new UnsupportedOperationException("Not yet implemented");
+        //throw new UnsupportedOperationException("Not yet implemented");
+        return null;
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-
         mTimer = new Timer();
-        mTimer.schedule(new TimerTaskToGetLocation(), 5, notify_interval);
+        timerTask= new TimerTaskToGetLocation();
+        mTimer.schedule(timerTask, 5, notify_interval);
         intent = new Intent(str_receiver);
     }
 
@@ -130,14 +134,27 @@ public class MyMapServices extends Service implements LocationListener {
                     fn_getlocation();
                 }
             });
-
         }
     }
 
     private void fn_update(Location location){
 
-        intent.putExtra("latutide",location.getLatitude()+"");
+        intent.putExtra("latitude",location.getLatitude()+"");
         intent.putExtra("longitude",location.getLongitude()+"");
         sendBroadcast(intent);
+    }
+
+    /**
+     * Called by the system to notify a Service that it is no longer used and is being removed.  The
+     * service should clean up any resources it holds (threads, registered
+     * receivers, etc) at this point.  Upon return, there will be no more calls
+     * in to this Service object and it is effectively dead.  Do not call this method directly.
+     */
+    @Override
+    public void onDestroy() {
+        mTimer.cancel();
+        timerTask.cancel();
+        super.onDestroy();
+
     }
 }

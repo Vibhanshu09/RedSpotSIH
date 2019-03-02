@@ -2,7 +2,11 @@ package com.sistec.redspot;
 
 import android.Manifest;
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -13,6 +17,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -53,11 +58,14 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int MY_PERMISSIONS_REQUEST_LOCATION = 101;
+    private static final int REQUEST_PERMISSIONS = 100;
     private static final int MAP_UPDATE_TIME = 10000; //10sec
     private static final long MAP_UPDATE_DISTANCE = 50; //50 meters
     private static final float ZOOM_LEVEL = 14.0f;
-    private static final float MAX_ZONE_TO_COVER = 1500; //1500 meters
+    private static final float MAX_ZONE_TO_COVER = 1000; //1000 meters
     private boolean IS_LOCATION_PERMISSION_ENABLED = false;
+
+    SharedPreferences mPref;
 
     TextView tvDengerCount;
     //TextView tvPlaceDetails;
@@ -102,6 +110,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (!IS_LOCATION_PERMISSION_ENABLED){
                 getLocationPermission();
             }
+            mPref = getSharedPreferences("service", Context.MODE_PRIVATE);
             locationCallback = new LocationCallback() {
                 @Override
                 public void onLocationResult(LocationResult locationResult) {
@@ -135,16 +144,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         getMenuInflater().inflate(R.menu.options_menu, menu);
         return true;
     }
-
-    /*@Override
+/*
+    @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        MenuItem item = menu.findItem(R.id.start_tracking);
-        if (isTrackingStarted){
+        MenuItem item = menu.findItem(R.id.location_service);
+        if (item.getTitle().equals(getResources().getString(R.string.start_tracking))){
             item.setTitle(getResources().getString(R.string.stop_tracking));
-            item.setIcon(getDrawable(R.drawable.ic_stop_tracking_24dp));
+            item.setIcon(getResources().getDrawable(R.drawable.ic_stop_tracking_24dp));
         } else {
             item.setTitle(getResources().getString(R.string.start_tracking));
-            item.setIcon(getDrawable(R.drawable.ic_start_tracking_24dp));
+            item.setIcon(getResources().getDrawable(R.drawable.ic_start_tracking_24dp));
         }
         return super.onPrepareOptionsMenu(menu);
     }*/
@@ -158,10 +167,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 startActivity(new Intent(MainActivity.this, LoginActivity.class));
                 MainActivity.this.finish();
                 break;
-            case R.id.location_service : if (item.getTitle().equals(getResources().getString(R.string.start_tracking))){
-                item.getTitle().equals(getResources().getString(R.string.start_tracking));
-                //TODO: Call service
-            }
+            case R.id.location_service :
+                SharedPreferences.Editor mEdit = mPref.edit();
+                if (mPref.getString("service", "").equals("")) {
+                    Toast.makeText(this, "Background service started", Toast.LENGTH_SHORT).show();
+                    mEdit.putString("service", "service").apply();
+                    Intent intent = new Intent(getApplicationContext(), MyMapServices.class);
+                    startService(intent);
+                    item.setTitle(getResources().getString(R.string.stop_tracking));
+                } else {
+                    Toast.makeText(this, "Background service stopped", Toast.LENGTH_SHORT).show();
+                    mEdit.putString("service", "").apply();
+                    Intent intent = new Intent(getApplicationContext(), MyMapServices.class);
+                    //startService(intent);
+                    stopService(intent);
+                    item.setTitle(getResources().getString(R.string.start_tracking));
+
+//                    item.setIcon(getResources().getDrawable(R.drawable.ic_start_tracking_24dp));
+                }
                 break;
             case R.id.about_us :
                 startActivity(new Intent(MainActivity.this, AboutActivity.class));
@@ -169,6 +192,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         return super.onOptionsItemSelected(item);
     }
+
 
     private void fetchDangerAddress(final Address address){
         fetchAddQuery = addressRef.orderByChild("sub_locality").startAt(address.getSubLocality().toLowerCase());
@@ -249,7 +273,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             circle.remove();
         circle = mGoogleMap.addCircle(circleOptions);
     }
-
     private void setMarker(Address address, LatLng ll){
         if (address.getSubLocality()==null) {
             address.setSubLocality(address.getLocality());
@@ -265,7 +288,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         fetchDangerAddress(address);
         marker = mGoogleMap.addMarker(markerOptions);
     }
-
     private void updateMarker(Address address){
         if (address.getSubLocality()==null)
             address.setSubLocality(address.getLocality());
@@ -276,7 +298,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         fetchDangerAddress(address);
         marker.showInfoWindow();
     }
-
     public boolean googleServicesAvailable() {
         GoogleApiAvailability api = GoogleApiAvailability.getInstance();
         int isAvailable = api.isGooglePlayServicesAvailable(this);
@@ -290,13 +311,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         return false;
     }
-
     private void initMap() {
         MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.mapFragment);
         mapFragment.getMapAsync(this);
 
     }
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mGoogleMap = googleMap;
@@ -409,7 +428,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
          */
 
     }
-
     private void checkLocationPermission(){
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -420,13 +438,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else
             IS_LOCATION_PERMISSION_ENABLED = true;    //if permission is already granted
     }
-
     private void getLocationPermission(){
         ActivityCompat.requestPermissions(this,
                 new String[] {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
                 MY_PERMISSIONS_REQUEST_LOCATION);
     }
-
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
@@ -445,10 +461,38 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
     }
-
     private void goToLocationZoom(double lat, double lng, float zoom){
         LatLng ll = new LatLng(lat, lng);
         CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll, zoom);
         mGoogleMap.moveCamera(update);
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(broadcastReceiver, new IntentFilter(MyMapServices.str_receiver));
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(broadcastReceiver);
+    }
+
+    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            LatLng ll = new LatLng(Double.valueOf(intent.getStringExtra("latitude")), Double.valueOf(intent.getStringExtra("longitude")));
+            Geocoder gc = new Geocoder(MainActivity.this);
+            List<Address> addresses = null;
+            try {
+                addresses = gc.getFromLocation(ll.latitude, ll.longitude,1);
+                Log.v("Location",addresses.get(0).getAdminArea());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            //tv_area.setText(addresses.get(0).getAdminArea());
+
+        }
+    };
 }

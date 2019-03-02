@@ -11,7 +11,7 @@
     </item>
 
     <item
-        app:showAsAction="always"
+        app:showAsAction="never"
         android:id="@+id/location_service"
         android:icon="@drawable/ic_start_tracking_24dp"
         android:title="@string/start_tracking" >

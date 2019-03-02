@@ -45,9 +45,9 @@ public class AddressStructureAdapter extends ArrayAdapter<AddressStructure> {
             container.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.danger_one));
         } else if (distance < 500){
             container.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.danger_two));
-        } else if (distance < 1000){
+        } else if (distance < 800){
             container.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.danger_three));
-        } else if (distance < 1500){
+        } else if (distance < 1000){
             container.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.danger_four));
         }
 
