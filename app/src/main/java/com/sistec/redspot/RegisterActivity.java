@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -18,6 +19,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -35,7 +37,7 @@ public class RegisterActivity extends AppCompatActivity {
     EditText etPassword;
     EditText etMobileNumber;
     EditText etEmail;
-
+    Button btotp;
     String strName, strPassword, strMobileNumber, strEmail;
 
     HashMap<String, Object> var = new HashMap<>();
@@ -60,22 +62,22 @@ public class RegisterActivity extends AppCompatActivity {
         btnSignup.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(validateEditTextFields()){
+                if (validateEditTextFields()) {
                     registerNewUser();
                 }
             }
         });
     }
 
-    private void showSnackbar(String msg){
-        Snackbar snackbar = Snackbar.make(regActivityBaseLayout,msg, 5000);
+    private void showSnackbar(String msg) {
+        Snackbar snackbar = Snackbar.make(regActivityBaseLayout, msg, 5000);
         // Changing action button text color
         TextView textView = (TextView) snackbar.getView().findViewById(android.support.design.R.id.snackbar_text);
         textView.setTextColor(Color.YELLOW);
         snackbar.show();
     }
 
-    private void registerNewUser(){
+    private void registerNewUser() {
         processDialog.setTitle("Registering");
         processDialog.setMessage("Please Wait....");
         processDialog.show();
@@ -84,11 +86,9 @@ public class RegisterActivity extends AppCompatActivity {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
-                            showSnackbar("Registration Successful, Please Login");
+                            sendVerificationMail();
                             //Toast.makeText(RegisterActivity.this, "Register successfully", Toast.LENGTH_SHORT).show();
                             updateUserDatabase();
-                            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
-                            finish();
                         } else {
                             Toast.makeText(RegisterActivity.this, "" + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                         }
@@ -97,11 +97,27 @@ public class RegisterActivity extends AppCompatActivity {
                 });
     }
 
-    private void updateUserDatabase(){
+    private void sendVerificationMail() {
+        final FirebaseUser tUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (tUser != null) {
+            tUser.sendEmailVerification().addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    showSnackbar("Please check your mail for verification.");
+                    FirebaseAuth.getInstance().signOut();
+                    startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+                    finish();
+                }
+            });
+        }
+    }
+
+
+    private void updateUserDatabase() {
         DatabaseReference prof = firebaseDatabase.getReference("users").child(mAuth.getCurrentUser().getUid());
         var.put("email", strEmail.toLowerCase());
         var.put("name", strName.toLowerCase());
-        var.put("mobile",strMobileNumber);
+        var.put("mobile", strMobileNumber);
         var.put("user_type", "user");
         prof.updateChildren(var);
         prof.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -116,7 +132,7 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
 
-    private boolean validateEditTextFields(){
+    private boolean validateEditTextFields() {
         strName = etName.getText().toString().trim();
         strEmail = etEmail.getText().toString().trim();
         strMobileNumber = etMobileNumber.getText().toString().trim();
@@ -125,7 +141,7 @@ public class RegisterActivity extends AppCompatActivity {
             etName.setError("Please Enter Your Name");
             return false;
         }
-        if (strEmail.isEmpty()) {
+        if (strEmail.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(strEmail).matches()) {
             etEmail.setError("Please Enter Valid Email");
             return false;
         }
@@ -139,4 +155,6 @@ public class RegisterActivity extends AppCompatActivity {
         }
         return true;
     }
+
 }
+

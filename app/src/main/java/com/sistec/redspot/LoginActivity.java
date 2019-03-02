@@ -6,11 +6,13 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -18,12 +20,14 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.rengwuxian.materialedittext.MaterialEditText;
 
 public class LoginActivity extends AppCompatActivity {
@@ -42,6 +46,7 @@ public class LoginActivity extends AppCompatActivity {
     private LinearLayout loginAcyivityBaseLayout;
 
     Button Validate;
+    AlertDialog.Builder builder;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -95,12 +100,12 @@ public class LoginActivity extends AppCompatActivity {
         imm.hideSoftInputFromWindow(pass.getWindowToken(),
                 InputMethodManager.RESULT_UNCHANGED_SHOWN);
 
-        if (id.getText().toString().trim().equals("")) {
-            id.setError("Email Required");
+        if (id.getText().toString().trim().isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(id.getText().toString().trim()).matches()) {
+            id.setError("Please Enter Valid Email");
             processDialog.dismiss();
         } else {
-            if (pass.getText().toString().trim().equals("")) {
-                pass.setError("Password Required");
+            if (pass.getText().toString().trim().length() < 6) {
+                pass.setError("Minimum 6 character required");
                 processDialog.dismiss();
             } else {
                 auth.signInWithEmailAndPassword(id.getText().toString(), pass.getText().toString())
@@ -110,9 +115,13 @@ public class LoginActivity extends AppCompatActivity {
                                 String _errorMessage = task.getException() != null ? task.getException().getMessage() : "";
                                 if (task.isSuccessful()) {
                                     processDialog.dismiss();
-                                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                                    startActivity(intent);
-                                    LoginActivity.this.finish();
+                                    if (task.getResult().getUser().isEmailVerified()) {
+                                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                                        startActivity(intent);
+                                        LoginActivity.this.finish();
+                                    } else {
+                                        showEmailVerificationErrorDialog();
+                                    }
                                 } else {
                                     processDialog.dismiss();
                                     showSnackbar(_errorMessage);
@@ -121,6 +130,44 @@ public class LoginActivity extends AppCompatActivity {
                             }
                         });
             }
+        }
+    }
+
+    private void showEmailVerificationErrorDialog() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            builder = new AlertDialog.Builder(LoginActivity.this, android.R.style.Theme_Material_Dialog_Alert);
+        else
+            builder = new AlertDialog.Builder(LoginActivity.this);
+        builder.setTitle("Email is Not Verified")
+                .setMessage("Please verify your email from link, sent on your email")
+                .setPositiveButton("Resend Link", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        resendEmailVerificationLink();
+                        processDialog.dismiss();
+                    }
+                })
+                .setNegativeButton("I'll come back", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Toast.makeText(LoginActivity.this, "Thank you.", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setIcon(R.drawable.ic_error_red_24dp)
+                .setCancelable(false)
+                .show();
+    }
+
+    private void resendEmailVerificationLink(){
+        final FirebaseUser tUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (tUser != null) {
+            tUser.sendEmailVerification().addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    showSnackbar("Please check your mail for verification.");
+                    FirebaseAuth.getInstance().signOut();
+                }
+            });
         }
     }
 

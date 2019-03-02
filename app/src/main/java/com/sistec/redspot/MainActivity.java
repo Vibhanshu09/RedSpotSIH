@@ -14,6 +14,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -21,6 +22,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -44,6 +46,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -68,6 +71,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     SharedPreferences mPref;
 
     TextView tvDengerCount;
+    LinearLayout llNoDanger;
+    FloatingActionButton fabAddDengerLocation;
     //TextView tvPlaceDetails;
 
 
@@ -98,9 +103,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (googleServicesAvailable()) {
             setContentView(R.layout.activity_main);
             //tvPlaceDetails = findViewById(R.id.place_details);
-            tvDengerCount = findViewById(R.id.denger_count);
             mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
             mAuth = FirebaseAuth.getInstance();
+            tvDengerCount = findViewById(R.id.denger_count);
+            llNoDanger = findViewById(R.id.no_danger_icon);
+            fabAddDengerLocation = findViewById(R.id.fab_add_danger_loc);
+            fabAddDengerLocation.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(MainActivity.this, RedSpotMarkerActivity.class));
+                }
+            });
+            checkUserTypeToShowFab();
             database = FirebaseDatabase.getInstance();
             addressRef = database.getReference().child("locations");
             adapter = new AddressStructureAdapter(this, addressStructuresArrayList);
@@ -115,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 @Override
                 public void onLocationResult(LocationResult locationResult) {
                     if (locationResult == null) {
-                        Toast.makeText(MainActivity.this, "Cant get location", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Can't get location", Toast.LENGTH_SHORT).show();
                         return;
                     }
                     userCurrentLocation = locationResult.getLastLocation();
@@ -157,6 +171,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         return super.onPrepareOptionsMenu(menu);
     }*/
+
+    private void checkUserTypeToShowFab(){
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        DatabaseReference userTypeDB = FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid()).child("user_type");
+        userTypeDB.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()){
+                    String userType = dataSnapshot.getValue(String.class);
+                    if (userType.equals("admin")) {
+                        fabAddDengerLocation.show();
+                    } else
+                        fabAddDengerLocation.hide();
+                } else
+                    Toast.makeText(MainActivity.this, "Errorrrrr", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -225,6 +263,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         tvDengerCount.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.safe_dark));
                         setSafeCircle();
                         NotificationHelper.hideOldNotification(MainActivity.this);
+                        llNoDanger.setVisibility(View.VISIBLE);
                     }
                     else {
                         NotificationHelper.showNewNotification(MainActivity.this,
@@ -234,9 +273,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         );
                         tvDengerCount.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.danger_highest));
                         setDangerCircle();
+                        llNoDanger.setVisibility(View.GONE);
                     }
                 } else {
-                    Toast.makeText(MainActivity.this, "oooooo", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Error in data fetching. Retry", Toast.LENGTH_SHORT).show();
                 }
             }
 

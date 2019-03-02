@@ -55,7 +55,7 @@ public class NotificationHelper {
         mBuilder.setContentText(desc);
         mBuilder.setStyle(new NotificationCompat.BigTextStyle()
                 .bigText(extraDesc + "\nClick this notification to know all danger area information."));
-        mBuilder.setPriority(Notification.PRIORITY_LOW);
+        mBuilder.setPriority(Notification.PRIORITY_HIGH);
         mBuilder.setSound(null);
         notificationManagerCompat = NotificationManagerCompat.from(context);
 
