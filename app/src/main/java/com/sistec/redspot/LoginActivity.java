@@ -8,10 +8,6 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -25,10 +21,15 @@ import android.widget.Toast;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.rengwuxian.materialedittext.MaterialEditText;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -174,7 +175,7 @@ public class LoginActivity extends AppCompatActivity {
     private void showSnackbar(String msg){
         Snackbar snackbar = Snackbar.make(loginAcyivityBaseLayout,msg, 5000);
         // Changing action button text color
-        TextView textView = (TextView) snackbar.getView().findViewById(android.support.design.R.id.snackbar_text);
+        TextView textView = (TextView) snackbar.getView().findViewById(R.id.snackbar_text);
         textView.setTextColor(Color.YELLOW);
         snackbar.show();
     }

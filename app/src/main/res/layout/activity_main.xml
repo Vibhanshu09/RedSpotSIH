@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -48,6 +48,27 @@
     </LinearLayout>
 
     <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Accident probability : "
+            android:textColor="@android:color/holo_red_light" />
+
+        <TextView
+            android:id="@+id/probability_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text=""/>
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/no_danger_icon"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -74,7 +95,7 @@
         android:divider="@android:color/transparent" />
 
 </LinearLayout>
-    <android.support.design.widget.FloatingActionButton
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_danger_loc"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -82,4 +103,4 @@
         android:src="@drawable/ic_add_location_white_24dp"
         android:layout_margin="16dp"
         android:backgroundTint="@color/colorPrimary"/>
-</android.support.design.widget.CoordinatorLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

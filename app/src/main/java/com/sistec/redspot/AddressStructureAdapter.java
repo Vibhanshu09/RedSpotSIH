@@ -2,8 +2,6 @@ package com.sistec.redspot;
 
 import android.content.Context;
 import android.location.Location;
-import android.support.annotation.NonNull;
-import android.support.v4.content.ContextCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +10,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+
+import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 
 public class AddressStructureAdapter extends ArrayAdapter<AddressStructure> {
     public AddressStructureAdapter(Context context, ArrayList<AddressStructure> addressStructures) {

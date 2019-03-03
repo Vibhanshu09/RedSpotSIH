@@ -8,11 +8,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.speech.tts.TextToSpeech;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.widget.Toast;
 
 import java.util.Locale;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 public class NotificationHelper {
 
@@ -34,6 +35,7 @@ public class NotificationHelper {
                 } else {
                     Toast.makeText(context, "TTS Initialization failed!", Toast.LENGTH_SHORT).show();
                 }
+                textToSpeech.setSpeechRate(0.8f);
                 textToSpeech.speak(warningData, TextToSpeech.QUEUE_FLUSH, null);
             }
         });
@@ -53,17 +55,17 @@ public class NotificationHelper {
         mBuilder.setColor(context.getResources().getColor(R.color.danger_highest));
         mBuilder.setContentTitle(title);
         mBuilder.setContentText(desc);
+        mBuilder.setBadgeIconType(NotificationCompat.BADGE_ICON_SMALL);
         mBuilder.setStyle(new NotificationCompat.BigTextStyle()
                 .bigText(extraDesc + "\nClick this notification to know all danger area information."));
         mBuilder.setPriority(Notification.PRIORITY_HIGH);
-        mBuilder.setSound(null);
         notificationManagerCompat = NotificationManagerCompat.from(context);
 
         // Create the NotificationChannel, but only on API 26+ because
         // the NotificationChannel class is new and not in the support library
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            int importance = NotificationManager.IMPORTANCE_HIGH;
             NotificationChannel channel = new NotificationChannel(MY_CHANNEL_ID, MY_CHANNEL_NAME, importance);
             channel.setDescription(MY_CHANNEL_DESC);
             // Register the channel with the system; you can't change the importance

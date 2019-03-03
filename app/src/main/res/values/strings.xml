@@ -6,5 +6,18 @@
     <string name="log_out">Logout</string>
     <string name="start_tracking">Start Tracking</string>
     <string name="stop_tracking">Stop Tracking</string>
+    <string name="long_distance">Long Distance</string>
     <string name="about">About</string>
+    <string-array name="vehicle_type">
+        <item>Select Vehicle</item>
+        <item>Car</item>
+        <item>Bike</item>
+        <item>Bus</item>
+        <item>Truck</item>
+        <item>Auto</item>
+        <item>Other(Light)</item>
+        <item>Other(Heavy)</item>
+    </string-array>
+    <string name="fill_details">Fill Details</string>
+    <string name="pick_location">Pick Location</string>
 </resources>

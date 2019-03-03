@@ -3,6 +3,7 @@
     package="com.sistec.redspot">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="com.sistec.redspot.permission.MAPS_RECEIVE" />
@@ -25,7 +26,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".RedSpotMarkerActivity"></activity>
 
         <service
             android:name=".MyMapServices"
@@ -67,8 +67,18 @@
         </activity>
         <activity
             android:name=".AboutActivity"
-            android:parentActivityName=".MainActivity"
             android:theme="@style/AboutTheme">
+        </activity>
+        <activity android:name=".DangerLocationActivity"
+            android:label="@string/fill_details"
+            android:parentActivityName=".MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity" />
+        </activity>
+        <activity android:name=".DangerLocationPickerActivity"
+            android:label="@string/pick_location"
+            android:parentActivityName=".DangerLocationActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".LoginActivity" />

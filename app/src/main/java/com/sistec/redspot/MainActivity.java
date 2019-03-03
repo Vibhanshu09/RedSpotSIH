@@ -12,12 +12,6 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -45,8 +39,8 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -58,19 +52,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int MY_PERMISSIONS_REQUEST_LOCATION = 101;
-    private static final int REQUEST_PERMISSIONS = 100;
-    private static final int MAP_UPDATE_TIME = 10000; //10sec
-    private static final long MAP_UPDATE_DISTANCE = 50; //50 meters
+    private static final int MAP_UPDATE_TIME = 60000; //1 Min
+    private static final long MAP_UPDATE_DISTANCE = 100; //50 meters
     private static final float ZOOM_LEVEL = 14.0f;
-    private static final float MAX_ZONE_TO_COVER = 1000; //1000 meters
+    private float MAX_ZONE_TO_COVER = 1000; //1000 meters
     private boolean IS_LOCATION_PERMISSION_ENABLED = false;
 
     SharedPreferences mPref;
-
-    TextView tvDengerCount;
+    TextView tvDangerCount; //tvProbabilityCount;
     LinearLayout llNoDanger;
     FloatingActionButton fabAddDengerLocation;
     //TextView tvPlaceDetails;
@@ -105,23 +103,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             //tvPlaceDetails = findViewById(R.id.place_details);
             mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
             mAuth = FirebaseAuth.getInstance();
-            tvDengerCount = findViewById(R.id.denger_count);
+            tvDangerCount = findViewById(R.id.denger_count);
             llNoDanger = findViewById(R.id.no_danger_icon);
             fabAddDengerLocation = findViewById(R.id.fab_add_danger_loc);
+            //tvProbabilityCount = findViewById(R.id.probability_count);
             fabAddDengerLocation.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    startActivity(new Intent(MainActivity.this, RedSpotMarkerActivity.class));
+                    startActivity(new Intent(MainActivity.this, DangerLocationActivity.class));
                 }
             });
-            checkUserTypeToShowFab();
             database = FirebaseDatabase.getInstance();
             addressRef = database.getReference().child("locations");
             adapter = new AddressStructureAdapter(this, addressStructuresArrayList);
             listView = findViewById(R.id.place_details);
             listView.setAdapter(adapter);
             checkLocationPermission();
-            if (!IS_LOCATION_PERMISSION_ENABLED){
+            if (!IS_LOCATION_PERMISSION_ENABLED) {
                 getLocationPermission();
             }
             mPref = getSharedPreferences("service", Context.MODE_PRIVATE);
@@ -136,15 +134,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     LatLng ll = new LatLng(userCurrentLocation.getLatitude(), userCurrentLocation.getLongitude());
                     Geocoder gc = new Geocoder(MainActivity.this);
                     try {
-                        List<Address> list = gc.getFromLocation(ll.latitude, ll.longitude,1);
-                        setMarker(list.get(0), new LatLng(ll.latitude,ll.longitude));
+                        List<Address> list = gc.getFromLocation(ll.latitude, ll.longitude, 1);
+                        setMarker(list.get(0), new LatLng(ll.latitude, ll.longitude));
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
 
                     CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll, ZOOM_LEVEL);
                     mGoogleMap.animateCamera(update);
-                };
+                }
+
+                ;
             };
             initMap();
         } else {
@@ -158,89 +158,66 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         getMenuInflater().inflate(R.menu.options_menu, menu);
         return true;
     }
-/*
+
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         MenuItem item = menu.findItem(R.id.location_service);
-        if (item.getTitle().equals(getResources().getString(R.string.start_tracking))){
-            item.setTitle(getResources().getString(R.string.stop_tracking));
-            item.setIcon(getResources().getDrawable(R.drawable.ic_stop_tracking_24dp));
-        } else {
+        if (mPref.getString("service", "").equals(""))
             item.setTitle(getResources().getString(R.string.start_tracking));
-            item.setIcon(getResources().getDrawable(R.drawable.ic_start_tracking_24dp));
-        }
+        else
+            item.setTitle(getResources().getString(R.string.stop_tracking));
         return super.onPrepareOptionsMenu(menu);
-    }*/
-
-    private void checkUserTypeToShowFab(){
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-
-        DatabaseReference userTypeDB = FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid()).child("user_type");
-        userTypeDB.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()){
-                    String userType = dataSnapshot.getValue(String.class);
-                    if (userType.equals("admin")) {
-                        fabAddDengerLocation.show();
-                    } else
-                        fabAddDengerLocation.hide();
-                } else
-                    Toast.makeText(MainActivity.this, "Errorrrrr", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-            }
-        });
     }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        switch (id){
-            case R.id.logout : mAuth.signOut();
+        switch (id) {
+            case R.id.logout:
+                mAuth.signOut();
                 NotificationHelper.hideOldNotification(this);
                 startActivity(new Intent(MainActivity.this, LoginActivity.class));
                 MainActivity.this.finish();
                 break;
-            case R.id.location_service :
+            case R.id.location_service:
                 SharedPreferences.Editor mEdit = mPref.edit();
                 if (mPref.getString("service", "").equals("")) {
                     Toast.makeText(this, "Background service started", Toast.LENGTH_SHORT).show();
                     mEdit.putString("service", "service").apply();
                     Intent intent = new Intent(getApplicationContext(), MyMapServices.class);
                     startService(intent);
-                    item.setTitle(getResources().getString(R.string.stop_tracking));
                 } else {
                     Toast.makeText(this, "Background service stopped", Toast.LENGTH_SHORT).show();
                     mEdit.putString("service", "").apply();
                     Intent intent = new Intent(getApplicationContext(), MyMapServices.class);
                     //startService(intent);
                     stopService(intent);
-                    item.setTitle(getResources().getString(R.string.start_tracking));
 
 //                    item.setIcon(getResources().getDrawable(R.drawable.ic_start_tracking_24dp));
                 }
                 break;
-            case R.id.about_us :
+            case R.id.about_us:
                 startActivity(new Intent(MainActivity.this, AboutActivity.class));
+                break;
+            case R.id.long_distance:
+                MAX_ZONE_TO_COVER = 10000;
+                item.setVisible(false);
                 break;
         }
         return super.onOptionsItemSelected(item);
     }
 
 
-    private void fetchDangerAddress(final Address address){
+    private void fetchDangerAddress(final Address address) {
         fetchAddQuery = addressRef.orderByChild("sub_locality").startAt(address.getSubLocality().toLowerCase());
         fetchAddQuery.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()){
+                if (dataSnapshot.exists()) {
                     int dgCount = 0;
                     addressStructuresArrayList.clear();
-                    for (DataSnapshot result : dataSnapshot.getChildren()){
+                    for (DataSnapshot result : dataSnapshot.getChildren()) {
                         AddressStructure tempHolder = result.getValue(AddressStructure.class);
                         if (tempHolder != null) {
                             tempHolder.setCurrLocation(userCurrentLocation);
@@ -256,22 +233,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         }
 
                     }
-                    tvDengerCount.setText("" + dgCount);
-                    if (dgCount == 0 ){
+                    tvDangerCount.setText("" + dgCount);
+                    if (dgCount == 0) {
                         addressStructuresArrayList.clear();
                         adapter.notifyDataSetChanged();
-                        tvDengerCount.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.safe_dark));
+                        tvDangerCount.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.safe_dark));
                         setSafeCircle();
                         NotificationHelper.hideOldNotification(MainActivity.this);
                         llNoDanger.setVisibility(View.VISIBLE);
-                    }
-                    else {
+                    } else {
                         NotificationHelper.showNewNotification(MainActivity.this,
                                 "Your Location: " + address.getSubLocality(),
                                 "You are in accident prone area.",
                                 "Accident Counts : " + dgCount
                         );
-                        tvDengerCount.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.danger_highest));
+                        tvDangerCount.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.danger_highest));
                         setDangerCircle();
                         llNoDanger.setVisibility(View.GONE);
                     }
@@ -287,12 +263,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void setDangerCircle(){
+    private void setDangerCircle() {
         CircleOptions circleOptions = new CircleOptions()
                 .center(new LatLng(userCurrentLocation.getLatitude(), userCurrentLocation.getLongitude()))
                 .radius(MAX_ZONE_TO_COVER)
                 .strokeWidth(10)
-                .strokeColor(ContextCompat.getColor(this,R.color.danger_highest))
+                .strokeColor(ContextCompat.getColor(this, R.color.danger_highest))
                 .fillColor(ContextCompat.getColor(this, R.color.danger_four));
 
         // Get back the mutable Polyline
@@ -300,12 +276,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             circle.remove();
         circle = mGoogleMap.addCircle(circleOptions);
     }
-    private void setSafeCircle(){
+
+    private void setSafeCircle() {
         CircleOptions circleOptions = new CircleOptions()
                 .center(new LatLng(userCurrentLocation.getLatitude(), userCurrentLocation.getLongitude()))
                 .radius(MAX_ZONE_TO_COVER)
                 .strokeWidth(10)
-                .strokeColor(ContextCompat.getColor(this,R.color.safe_dark))
+                .strokeColor(ContextCompat.getColor(this, R.color.safe_dark))
                 .fillColor(ContextCompat.getColor(this, R.color.safe_one));
 
 // Get back the mutable Polyline
@@ -313,8 +290,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             circle.remove();
         circle = mGoogleMap.addCircle(circleOptions);
     }
-    private void setMarker(Address address, LatLng ll){
-        if (address.getSubLocality()==null) {
+
+    private void setMarker(Address address, LatLng ll) {
+        if (address.getSubLocality() == null) {
             address.setSubLocality(address.getLocality());
         }
         markerOptions = new MarkerOptions()
@@ -322,14 +300,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .draggable(true)
                 .snippet("You are here")
                 .position(ll);
-        if (marker != null){
+        if (marker != null) {
             marker.remove();
         }
         fetchDangerAddress(address);
         marker = mGoogleMap.addMarker(markerOptions);
     }
-    private void updateMarker(Address address){
-        if (address.getSubLocality()==null)
+
+    private void updateMarker(Address address) {
+        if (address.getSubLocality() == null)
             address.setSubLocality(address.getLocality());
         userCurrentLocation.setLatitude(address.getLatitude());
         userCurrentLocation.setLongitude(address.getLongitude());
@@ -338,6 +317,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         fetchDangerAddress(address);
         marker.showInfoWindow();
     }
+
     public boolean googleServicesAvailable() {
         GoogleApiAvailability api = GoogleApiAvailability.getInstance();
         int isAvailable = api.isGooglePlayServicesAvailable(this);
@@ -351,15 +331,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         return false;
     }
+
     private void initMap() {
         MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.mapFragment);
         mapFragment.getMapAsync(this);
 
     }
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mGoogleMap = googleMap;
-        if (mGoogleMap != null){
+        if (mGoogleMap != null) {
 
             mGoogleMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
                 @Override
@@ -378,7 +360,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     LatLng ll = marker.getPosition();
                     List<Address> list = null;
                     try {
-                        list = gc.getFromLocation(ll.latitude, ll.longitude,1);
+                        list = gc.getFromLocation(ll.latitude, ll.longitude, 1);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -418,10 +400,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 public void onMapLongClick(LatLng ll) {
                     Geocoder gc = new Geocoder(MainActivity.this);
                     try {
-                        List<Address> list = gc.getFromLocation(ll.latitude, ll.longitude,1);
+                        List<Address> list = gc.getFromLocation(ll.latitude, ll.longitude, 1);
                         userCurrentLocation.setLatitude(ll.latitude);
                         userCurrentLocation.setLongitude(ll.longitude);
-                        setMarker(list.get(0), new LatLng(ll.latitude,ll.longitude));
+                        setMarker(list.get(0), new LatLng(ll.latitude, ll.longitude));
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -439,9 +421,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
                         mLocationRequest.setInterval(MAP_UPDATE_TIME);
                         mLocationRequest.setSmallestDisplacement(MAP_UPDATE_DISTANCE);
-                        try{
-                            mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest, locationCallback,null);
-                        } catch (SecurityException ex){
+                        try {
+                            mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest, locationCallback, null);
+                        } catch (SecurityException ex) {
                             ex.printStackTrace();
                         }
                     }
@@ -468,7 +450,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
          */
 
     }
-    private void checkLocationPermission(){
+
+    private void checkLocationPermission() {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
@@ -478,11 +461,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else
             IS_LOCATION_PERMISSION_ENABLED = true;    //if permission is already granted
     }
-    private void getLocationPermission(){
+
+    private void getLocationPermission() {
         ActivityCompat.requestPermissions(this,
-                new String[] {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
                 MY_PERMISSIONS_REQUEST_LOCATION);
     }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
@@ -491,21 +476,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     IS_LOCATION_PERMISSION_ENABLED = true;
-
+                    initMap();
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
-                   IS_LOCATION_PERMISSION_ENABLED = false;
-                   MainActivity.this.finish();
+                    IS_LOCATION_PERMISSION_ENABLED = false;
+                    MainActivity.this.finish();
                 }
             }
         }
     }
-    private void goToLocationZoom(double lat, double lng, float zoom){
+
+    private void goToLocationZoom(double lat, double lng, float zoom) {
         LatLng ll = new LatLng(lat, lng);
         CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll, zoom);
         mGoogleMap.moveCamera(update);
     }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -526,8 +513,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Geocoder gc = new Geocoder(MainActivity.this);
             List<Address> addresses = null;
             try {
-                addresses = gc.getFromLocation(ll.latitude, ll.longitude,1);
-                Log.v("Location",addresses.get(0).getAdminArea());
+                addresses = gc.getFromLocation(ll.latitude, ll.longitude, 1);
+                Log.v("Location", addresses.get(0).getAdminArea());
             } catch (IOException e) {
                 e.printStackTrace();
             }

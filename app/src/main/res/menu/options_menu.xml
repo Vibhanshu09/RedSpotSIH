@@ -17,6 +17,12 @@
         android:title="@string/start_tracking" >
 
     </item>
+    <item
+        app:showAsAction="never"
+        android:id="@+id/long_distance"
+        android:title="@string/long_distance" >
+
+    </item>
 
     <item
         app:showAsAction="never"
